@@ -39,9 +39,9 @@ def build(file,n):
 
 def load_ngrams(n):
     try:
-        file = open(os.environ["HOME"]+"/.pickle/spellcheck-pt-{n}.pkl", "rb")
+        file = open(os.environ["HOME"]+f"/.pickle/spellcheck-pt-words-{n}.pkl", "rb")
     except:
-        print("~/.pickle/spellcheck-pt-{n}.pkl: File not found... Build first!")
+        print(f"~/.pickle/spellcheck-pt-words-{n}.pkl: File not found... Build first!")
         sys.exit(1)
 
     return pickle.load(file)
@@ -67,10 +67,45 @@ def load_configfile():
 
     return regexs
 
-def classify(file,n):
+def calc_ngrams_for_classify(text,n):
+    text = clean_text(text)
+
+    #separar por palavras
+    ngrams = re.split("\s+",text)
+
+    #remove empty elems
+    while "" in ngrams:
+        ngrams.remove("")
+
+    #n grams of words
+    ngrams = [" ".join(ngrams[i:i+n]) for i in range(len(ngrams)-(n-1))]
+
+    return ngrams
+
+def classify(filename,n):
+    try:
+        file = open(filename, "r")
+    except:
+        print("{filename}: File not found...")
+        sys.exit(1)
+
+    loaded_ngrams = load_ngrams(n)
+    configfile = load_configfile()
+
+    text = file.read() 
+    input_ngrams = calc_ngrams_for_classify(text,n)
+    print(input_ngrams)
+
+    
+    for (a,b) in configfile:
+        a_ngrams = [ngram for ngram in input_ngrams if re.match(r'.*?'+a+r'.*?',ngram)]
+        b_ngrams = [ngram for ngram in input_ngrams if re.match(r'.*?'+b+r'.*?',ngram)]
+        print(a_ngrams)
+        print(b_ngrams)
+
+classify(args[0],int(args[1]))
+
     #TODO
-    #load ngrams, and config file
-    #calc ngrams for input file
     #for each line of config file:
         #filter ngrams, get only ngrams that contains one word that respect one of the regexs
         #for each case, get from load ngrams if are more cases with first regex or with the second regex. Maybe will be a problem, because is calculated ngrams for input so an occurence in the input file will appear more than one time, maybe can make the sommatory of all cases
