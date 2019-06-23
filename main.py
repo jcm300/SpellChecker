@@ -63,24 +63,59 @@ def load_configfile():
     regexs = []
     for line in lines:
         aux = line.split(" ||| ")
-        regexs.append((aux[0],aux[1]))
+        try:
+            regexs.append((aux[0],aux[1],aux[2],aux[3]))
+        except:
+            print("Error on configfile.... Syntax error!")
+            sys.exit(1)
 
     return regexs
 
-def calc_ngrams_for_classify(text,n):
+def get_words(text):
     text = clean_text(text)
 
     #separar por palavras
-    ngrams = re.split("\s+",text)
+    words = re.split("\s+",text)
 
     #remove empty elems
+    while "" in words:
+        words.remove("")
+
+    return words
+
+def get_ngrams(words,i,n):
+    if i == 0:
+        ngrams = [" ".join(words[j:j+n]) for j in range(0,i+n-1)]
+    elif i == len(words)-1:
+        ngrams = [" ".join(words[j:j+n]) for j in range(i-n+1,len(words)-1)]
+    else:
+        ngrams = [" ".join(words[j:j+n]) for j in range(i-n+1,i+n-1)]
+
     while "" in ngrams:
         ngrams.remove("")
 
-    #n grams of words
-    ngrams = [" ".join(ngrams[i:i+n]) for i in range(len(ngrams)-(n-1))]
-
     return ngrams
+
+def get_occur(ngrams, loaded_ngrams):
+    occur = {}
+    for ngram in ngrams:
+        occur[ngram] = loaded_ngrams.get(ngram,0)
+
+    return occur
+
+def construct_regex(s,c,d):
+    if c != "":
+        if d != "":
+            regex = r"("+c+r")"+s+r"("+d+r")"
+        else:
+            regex = r"("+c+r")"+s
+    else:
+        if d != "":
+            regex = r""+s+r"("+d+r")"
+        else:
+            regex = r""+s
+
+    return regex
 
 def classify(filename,n):
     try:
@@ -93,15 +128,37 @@ def classify(filename,n):
     configfile = load_configfile()
 
     text = file.read() 
-    input_ngrams = calc_ngrams_for_classify(text,n)
-    print(input_ngrams)
-
+    words = get_words(text)
+    print(words)
     
-    for (a,b) in configfile:
-        a_ngrams = [ngram for ngram in input_ngrams if re.match(r'.*?'+a+r'.*?',ngram)]
-        b_ngrams = [ngram for ngram in input_ngrams if re.match(r'.*?'+b+r'.*?',ngram)]
-        print(a_ngrams)
-        print(b_ngrams)
+    for (a,b,c,d) in configfile:
+        for i in range(len(words)):
+            a_regex = construct_regex(a,c,d)
+            b_regex = construct_regex(b,c,d)
+
+            if re.match(a_regex,words[i]):
+                a_ngrams = get_ngrams(words,i,n)
+                occur_a = get_occur(a_ngrams,loaded_ngrams)
+                sum_a = sum(occur_a.values())
+
+                print(sum_a)
+                #TODO: fazer o mesmo para o caso com b, mas para este caso em especifico, ou seja trocar nos ngrams o a_regex por b_regex
+
+            elif re.match(b_regex,words[i]):
+                b_ngrams = get_ngrams(words,i,n)
+                occur_b = get_occur(b_ngrams,loaded_ngrams)
+                sum_b = sum(occur_b.values())
+
+                print(occur_b)
+                #TODO: fazer o mesmo para o caso com a, mas para este caso em especifico, ou seja trocar nos ngrams o b_regex por a_regex
+        
+        #occur_a = {}
+        #for ngram in a_ngrams:
+        #    occur_a[ngram] = loaded_ngrams.get(ngram,0)
+
+        #occur_b = {}
+        #for ngram in b_ngrams:
+        #    occur_b[ngram] = loaded_ngrams.get(ngram,0)
 
 classify(args[0],int(args[1]))
 
