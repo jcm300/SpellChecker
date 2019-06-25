@@ -3,9 +3,6 @@
 from collections import Counter
 import sys, re, pickle, os, getopt
 
-opts, args = getopt.getopt(sys.argv[1:], "")
-opts = dict(opts)
-
 def clean_text(text):
     text = re.sub(r"\s+", " ", text)
     text = re.sub(r"[,.:;!?]",r"",text)
@@ -30,8 +27,6 @@ def build(file,n):
     text = open(file).read()
     text = clean_text(text)
     occur = calc_ngrams(text,n)
-
-    print(occur)
 
     os.makedirs(os.environ["HOME"]+"/.pickle/", exist_ok=True)
     f = open(os.environ["HOME"]+f"/.pickle/spellcheck-pt-words-{n}.pkl", "wb")
@@ -83,17 +78,42 @@ def get_words(text):
 
     return words
 
-def get_ngrams(words,i,n):
-    if i == 0:
-        ngrams = [" ".join(words[j:j+n]) for j in range(0,i+n-1)]
-    elif i == len(words)-1:
-        ngrams = [" ".join(words[j:j+n]) for j in range(i-n+1,len(words)-1)]
-    else:
-        ngrams = [" ".join(words[j:j+n]) for j in range(i-n+1,i+n-1)]
+def get_ngrams_aux(words):
+    ngrams = [" ".join(words[j:j+n]) for j in range(0,len(words)-n+1)]
 
     while "" in ngrams:
         ngrams.remove("")
 
+    return ngrams
+
+def get_ngrams(words,i,n):
+    if i == 0:
+        if i == len(words)-1:
+            words_used = [words[i]]
+        else:
+            words_used = words[i:i+n]
+    else:
+        if i == len(words)-1:
+            words_used = words[i-n+1:i+1]
+        else:
+            words_used = words[i-n+1:i+n]
+
+    ngrams = get_ngrams_aux(words_used)
+    return ngrams
+
+def get_ngrams_sub(words,new_word,i,n):
+    if i == 0:
+        if i == len(words)-1:
+            words_used = [new_word]
+        else:
+            words_used = [new_word]+words[i+1:i+n]
+    else:
+        if i == len(words)-1:
+            words_used = words[i-n+1:i]+[new_word]
+        else:
+            words_used = words[i-n+1:i]+[new_word]+words[i+1:i+n]
+
+    ngrams = get_ngrams_aux(words_used)
     return ngrams
 
 def get_occur(ngrams, loaded_ngrams):
@@ -106,18 +126,57 @@ def get_occur(ngrams, loaded_ngrams):
 def construct_regex(s,c,d):
     if c != "":
         if d != "":
-            regex = r"("+c+r")"+s+r"("+d+r")"
+            regex = r"^("+c+r")"+s+r"("+d+r")$"
         else:
-            regex = r"("+c+r")"+s
+            regex = r"^("+c+r")"+s+r"$"
     else:
         if d != "":
-            regex = r""+s+r"("+d+r")"
+            regex = r"^"+s+r"("+d+r")$"
         else:
-            regex = r""+s
+            regex = r"^"+s+r"$"
 
     return regex
 
-def classify(filename,n):
+def get_match_group(match,n):
+    try:
+        group = match.group(n)
+    except:
+        group = None
+
+    return group
+
+def get_regex_sub(match,c):
+    group1 = get_match_group(match,1)
+    group2 = get_match_group(match,2)
+
+    if group1!=None:
+        if group2!=None:
+            regex_sub = r'' + group1 + c + group2
+        else:
+            regex_sub = r'' + group1 + c
+    else:
+        if group2!=None:
+            regex_sub = r'' + c + group2
+        else:
+            regex_sub = r'' + c
+
+    return regex_sub
+
+def sub(words, i, n, loaded_ngrams, match, c):
+    ngrams = get_ngrams(words,i,n)
+    occur = get_occur(ngrams,loaded_ngrams)
+    sum_r = sum(occur.values())
+
+    regex_sub = get_regex_sub(match, c)
+
+    ngrams_sub = get_ngrams_sub(words,regex_sub,i,n)
+    occur_sub = get_occur(ngrams_sub,loaded_ngrams)
+    sum_sub = sum(occur_sub.values())
+
+    if sum_sub > sum_r:
+        words[i] = regex_sub
+
+def spell_check(filename,n):
     try:
         file = open(filename, "r")
     except:
@@ -136,33 +195,46 @@ def classify(filename,n):
             a_regex = construct_regex(a,c,d)
             b_regex = construct_regex(b,c,d)
 
-            if re.match(a_regex,words[i]):
-                a_ngrams = get_ngrams(words,i,n)
-                occur_a = get_occur(a_ngrams,loaded_ngrams)
-                sum_a = sum(occur_a.values())
+            a_match = re.match(a_regex,words[i])
+            b_match = re.match(b_regex,words[i])
 
-                print(sum_a)
-                #TODO: fazer o mesmo para o caso com b, mas para este caso em especifico, ou seja trocar nos ngrams o a_regex por b_regex
+            if a_match:
+                sub(words, i, n, loaded_ngrams, a_match, b)
+            elif b_match:
+                sub(words, i, n, loaded_ngrams, b_match, a)
 
-            elif re.match(b_regex,words[i]):
-                b_ngrams = get_ngrams(words,i,n)
-                occur_b = get_occur(b_ngrams,loaded_ngrams)
-                sum_b = sum(occur_b.values())
-
-                print(occur_b)
-                #TODO: fazer o mesmo para o caso com a, mas para este caso em especifico, ou seja trocar nos ngrams o b_regex por a_regex
+    print(words)
+    #TODO: reconstruir texto com os words já atualizados
         
-        #occur_a = {}
-        #for ngram in a_ngrams:
-        #    occur_a[ngram] = loaded_ngrams.get(ngram,0)
+def printHelp():
+    print("Usage: ./main.py [OPTIONS] [FILENAME] [N-GRAM-SIZE]")
+    print("Default behaviour: Spell check File")
+    print("\nOptions:")
+    print("  -b\tBuild N-Grams dataset")
+    print("  -h\tHelp")
+    print("\nExample: ./main.py text.txt 2")
 
-        #occur_b = {}
-        #for ngram in b_ngrams:
-        #    occur_b[ngram] = loaded_ngrams.get(ngram,0)
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "bh")
+    opts = dict(opts)
+except:
+    printHelp()
+    sys.exit(1)
 
-classify(args[0],int(args[1]))
+b = opts.get('-b',None)
+h = opts.get('-h',None)
 
-    #TODO
-    #for each line of config file:
-        #filter ngrams, get only ngrams that contains one word that respect one of the regexs
-        #for each case, get from load ngrams if are more cases with first regex or with the second regex. Maybe will be a problem, because is calculated ngrams for input so an occurence in the input file will appear more than one time, maybe can make the sommatory of all cases
+if h!=None:
+    printHelp()
+    sys.exit(1)
+else:
+    try:
+        n = int(args[1])
+    except:
+        printHelp()
+        sys.exit(1)
+
+    if b!=None:
+        build(args[0],n)
+    else:
+        spell_check(args[0],n)
