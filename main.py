@@ -67,16 +67,24 @@ def load_configfile():
     return regexs
 
 def get_words(text):
-    text = clean_text(text)
 
-    #separar por palavras
-    words = re.split("\s+",text)
+    words = re.split("(\s+|[,.:;!?])",text)
 
-    #remove empty elems
     while "" in words:
         words.remove("")
 
-    return words
+    words_backup = words.copy()
+    
+    i = 0
+    length = len(words)
+    while i < length:
+        if re.match("\s+|[,.:;!?]",words[i]):
+            del words[i]
+            length -= 1
+        else:
+            i += 1
+    
+    return (words,words_backup)
 
 def get_ngrams_aux(words):
     ngrams = [" ".join(words[j:j+n]) for j in range(0,len(words)-n+1)]
@@ -176,6 +184,20 @@ def sub(words, i, n, loaded_ngrams, match, c):
     if sum_sub > sum_r:
         words[i] = regex_sub
 
+def recover_text(words, words_backup):
+    i = 0
+    j = 0
+    len_b = len(words_backup)
+    len_w = len(words)
+    while i < len_b and j < len_w:
+        if not re.match("\s+|[,.:;!?]",words_backup[i]):
+            words_backup[i] = words[j]
+            j += 1
+        i += 1
+
+    text_spell_checked = "".join(words_backup)
+    return text_spell_checked
+
 def spell_check(filename,n):
     try:
         file = open(filename, "r")
@@ -187,8 +209,8 @@ def spell_check(filename,n):
     configfile = load_configfile()
 
     text = file.read() 
-    words = get_words(text)
-    print(words)
+    #words only have words and words backup have words and other symbols that are not words to recovery later the text
+    (words, words_backup) = get_words(text)
     
     for (a,b,c,d) in configfile:
         for i in range(len(words)):
@@ -203,19 +225,20 @@ def spell_check(filename,n):
             elif b_match:
                 sub(words, i, n, loaded_ngrams, b_match, a)
 
-    print(words)
-    #TODO: reconstruir texto com os words já atualizados
+    text_spell_checked = recover_text(words, words_backup)
+    return text_spell_checked
         
 def printHelp():
     print("Usage: ./main.py [OPTIONS] [FILENAME] [N-GRAM-SIZE]")
-    print("Default behaviour: Spell check File")
+    print("Default behaviour: output spell checked file content")
     print("\nOptions:")
     print("  -b\tBuild N-Grams dataset")
+    print("  -o\tOutput filename of default behaviour")
     print("  -h\tHelp")
     print("\nExample: ./main.py text.txt 2")
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "bh")
+    opts, args = getopt.getopt(sys.argv[1:], "bho:")
     opts = dict(opts)
 except:
     printHelp()
@@ -223,6 +246,7 @@ except:
 
 b = opts.get('-b',None)
 h = opts.get('-h',None)
+o = opts.get('-o',None)
 
 if h!=None:
     printHelp()
@@ -237,4 +261,9 @@ else:
     if b!=None:
         build(args[0],n)
     else:
-        spell_check(args[0],n)
+        if o!=None:
+            out = open(o,"w")
+        else:
+            out = sys.stdout
+
+        out.write(spell_check(args[0],n))
