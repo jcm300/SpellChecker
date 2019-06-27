@@ -224,8 +224,6 @@ def spell_check(filename,n):
         sys.exit(1)
 
     loaded_ngrams = load_ngrams(n)
-    ooo = open("a","w")
-    ooo.write(str(loaded_ngrams))
     configfile = load_configfile()
 
     text = file.read() 
