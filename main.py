@@ -1,32 +1,50 @@
 #!/usr/bin/env python3
 
 from collections import Counter
-import sys, re, pickle, os, getopt
+import sys, re, pickle, os, getopt, gc
 
-def clean_text(text):
-    text = re.sub(r"\s+", " ", text)
-    text = re.sub(r"[,.:;!?]",r"",text)
-    text = text.lower()
-    return text
+def clean_text(lines):
+    for i in range(len(lines)):
+        lines[i] = re.sub(r"\s+", " ", lines[i])
+        lines[i] = re.sub(r"[,.:;!?]",r"",lines[i])
+        lines[i] = lines[i].lower()
+    return lines
 
-def calc_ngrams(text,n):
+def calc_ngrams(lines,n):
     #separar por palavras
-    ngrams = re.split("\s+",text)
+    words_a = []
+    for line in lines:
+        aux = re.split("\s+",line)
 
-    #remove empty elems
-    while "" in ngrams:
-        ngrams.remove("")
+        #remove empty elems
+        while "" in aux:
+            aux.remove("")
+
+        words_a.append(aux)
+
+    words = []
+    for wl in words_a:
+        words.extend(wl)
+
+    #release memory
+    del words_a
+    gc.collect()
 
     #n grams of words
-    ngrams = [" ".join(ngrams[i:i+n]) for i in range(len(ngrams)-(n-1))]
-    occur = dict(Counter(ngrams))
+    ngrams = [" ".join(words[i:i+n]) for i in range(len(words)-(n-1))]
 
+    #release memory
+    del words
+    gc.collect()
+
+    occur = dict(Counter(ngrams))
     return occur
 
 def build(file,n):
     text = open(file).read()
-    text = clean_text(text)
-    occur = calc_ngrams(text,n)
+    lines = text.split("\n")
+    lines = clean_text(lines)
+    occur = calc_ngrams(lines,n)
 
     os.makedirs(os.environ["HOME"]+"/.pickle/", exist_ok=True)
     f = open(os.environ["HOME"]+f"/.pickle/spellcheck-pt-words-{n}.pkl", "wb")
@@ -206,6 +224,8 @@ def spell_check(filename,n):
         sys.exit(1)
 
     loaded_ngrams = load_ngrams(n)
+    ooo = open("a","w")
+    ooo.write(str(loaded_ngrams))
     configfile = load_configfile()
 
     text = file.read() 
