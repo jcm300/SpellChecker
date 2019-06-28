@@ -100,6 +100,7 @@ def get_words(text):
             del words[i]
             length -= 1
         else:
+            words[i] = words[i].lower()
             i += 1
     
     return (words,words_backup)
@@ -220,7 +221,7 @@ def spell_check(filename,n):
     try:
         file = open(filename, "r")
     except:
-        print("{filename}: File not found...")
+        print(f"{filename}: File not found...")
         sys.exit(1)
 
     loaded_ngrams = load_ngrams(n)
