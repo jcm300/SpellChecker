@@ -232,10 +232,10 @@ def spell_check(filename,n):
     (words, words_backup) = get_words(text)
     
     for (a,b,c,d) in configfile:
-        for i in range(len(words)):
-            a_regex = construct_regex(a,c,d)
-            b_regex = construct_regex(b,c,d)
+        a_regex = construct_regex(a,c,d)
+        b_regex = construct_regex(b,c,d)
 
+        for i in range(len(words)):
             a_match = re.match(a_regex,words[i])
             b_match = re.match(b_regex,words[i])
 
