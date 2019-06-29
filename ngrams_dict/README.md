@@ -14,7 +14,7 @@ gunzip spellcheck-pt-words-3.pkl.gz
 mkdir ~/.pickle
 ```
 
-- Move corpus to pickle folder
+- Move n-grams dictionaries to pickle folder
 ```
 mv spellcheck-pt-words-2.pkl spellcheck-pt-words-3.pkl ~/.pickle
 ```
