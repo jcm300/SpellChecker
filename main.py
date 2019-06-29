@@ -224,8 +224,8 @@ def spell_check(filename,n):
         print(f"{filename}: File not found...")
         sys.exit(1)
 
-    loaded_ngrams = load_ngrams(n)
     configfile = load_configfile()
+    loaded_ngrams = load_ngrams(n)
 
     text = file.read() 
     #words only have words and words backup have words and other symbols that are not words to recovery later the text
