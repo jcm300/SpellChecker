@@ -54,7 +54,7 @@ def load_ngrams(n):
     try:
         file = open(os.environ["HOME"]+f"/.pickle/spellcheck-pt-words-{n}.pkl", "rb")
     except:
-        print(f"~/.pickle/spellcheck-pt-words-{n}.pkl: File not found... Build first!")
+        print(f"~/.pickle/spellcheck-pt-words-{n}.pkl: File not found... Build a n-grams dictionary for this size ({n}) first!\nSomething like this: ./main.py -b <corpus> {n}")
         sys.exit(1)
 
     return pickle.load(file)
