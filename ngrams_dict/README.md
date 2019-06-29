@@ -1,4 +1,4 @@
-# Installation of Corpus
+# Installation of n-grams dictionary
 
 - Unzip
 ```

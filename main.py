@@ -251,7 +251,7 @@ def printHelp():
     print("Usage: ./main.py [OPTIONS] [FILENAME] [N-GRAM-SIZE]")
     print("Default behaviour: output spell checked file content")
     print("\nOptions:")
-    print("  -b\tBuild N-Grams corpus")
+    print("  -b\tBuild n-grams dictionary")
     print("  -o\tOutput filename of default behaviour")
     print("  -h\tHelp")
     print("\nExample: ./main.py text.txt 2")
